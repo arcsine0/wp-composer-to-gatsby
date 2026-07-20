@@ -1,0 +1,25 @@
+{
+  "name": "gatsby-plugin-wp-composer-converter",
+  "version": "0.1.0",
+  "description": "Gatsby plugin that normalizes WordPress ACF composer layouts into predictable section data.",
+  "main": "src/index.js",
+  "keywords": [
+    "gatsby",
+    "gatsby-plugin",
+    "wordpress",
+    "acf",
+    "composer"
+  ],
+  "license": "MIT",
+  "files": [
+    "gatsby-node.js",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/converter.test.js"
+  },
+  "peerDependencies": {
+    "gatsby": ">=5"
+  }
+}
