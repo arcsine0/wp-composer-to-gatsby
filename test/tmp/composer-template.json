@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "pageTemplate",
+      "key": "pageTemplate",
+      "label": "Page Template",
+      "description": null,
+      "postType": "page",
+      "graphQLType": "Page",
+      "target": {
+        "key": "pageTemplate",
+        "nodeType": null,
+        "graphQLSingleName": "Page",
+        "graphQLPluralName": null,
+        "composerField": null,
+        "label": "Page Template"
+      },
+      "sections": [
+        {
+          "id": "heroSection",
+          "layout": "hero",
+          "type": "heroSection",
+          "label": "HeroSection",
+          "group": null,
+          "layoutName": "hero",
+          "fields": [
+            {
+              "name": "title",
+              "source": "header",
+              "type": "text",
+              "required": false,
+              "multiple": false,
+              "description": null
+            },
+            {
+              "name": "content",
+              "source": "content",
+              "type": "wysiwyg",
+              "required": false,
+              "multiple": false,
+              "description": null
+            }
+          ]
+        },
+        {
+          "id": "faqSection",
+          "layout": "faq",
+          "type": "faqSection",
+          "label": "FaqSection",
+          "group": null,
+          "layoutName": "faq",
+          "fields": [
+            {
+              "name": "title",
+              "source": "header",
+              "type": "text",
+              "required": false,
+              "multiple": false,
+              "description": null
+            },
+            {
+              "name": "items",
+              "source": "items",
+              "type": "repeater",
+              "required": false,
+              "multiple": true,
+              "description": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

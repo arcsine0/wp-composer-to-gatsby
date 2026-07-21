@@ -14,12 +14,23 @@ const {
   createComposerPageData,
   createMappedComposerSections,
 } = require("./utils/page-data");
+const {
+  createComposerTemplate,
+  createComposerTemplateManifest,
+} = require("./templates/createComposerTemplate");
+const {
+  importComposerTemplate,
+  toBasicAuthHeader,
+} = require("./templates/importComposerTemplate");
 
 module.exports = {
   ...converter,
   collectComposerEntries,
   createComposerPageData,
+  createComposerTemplate,
+  createComposerTemplateManifest,
   createDefinitionsFromSections,
+  importComposerTemplate,
   createMappedComposerSections,
   createSectionsPreset,
   filterComposerEntries,
@@ -29,4 +40,5 @@ module.exports = {
   mapSectionsToComponents,
   normalizeComposerEntry,
   normalizeSection,
+  toBasicAuthHeader,
 };

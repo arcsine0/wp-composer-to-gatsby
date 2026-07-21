@@ -1,7 +1,13 @@
 const assert = require("assert");
+const fs = require("fs");
+const http = require("http");
+const path = require("path");
+const { execFileSync } = require("child_process");
 const {
   collectComposerEntries,
   createComposerPageData,
+  createComposerTemplate,
+  createComposerTemplateManifest,
   createMappedComposerSections,
   createPageConfig,
   createSectionsPreset,
@@ -9,7 +15,9 @@ const {
   getComposerEntriesFromGraphql,
   getComposerEntryByUri,
   groupComposerEntriesByPostType,
+  importComposerTemplate,
   mapSectionsToComponents,
+  toBasicAuthHeader,
 } = require("../src");
 
 const genericPreset = createSectionsPreset({
@@ -203,4 +211,73 @@ const mappedSections = createMappedComposerSections(rootEntries[0], {
 assert.equal(mappedSections.length, 1);
 assert.equal(mappedSections[0].type, "heroBanner");
 
-console.log("converter test passed");
+const template = createComposerTemplate({
+  id: "pageTemplate",
+  label: "Page Template",
+  postType: "page",
+  graphQLType: "Page",
+  sections: [
+    {
+      component: function HeroSection() {},
+      layout: "hero",
+      props: {
+        title: "header",
+        content: { source: "content", type: FIELD_TYPES.wysiwyg },
+      },
+    },
+  ],
+});
+assert.equal(template.sections[0].layout, "hero");
+assert.equal(template.sections[0].fields[0].name, "title");
+assert.equal(template.sections[0].fields[0].source, "header");
+
+const manifest = createComposerTemplateManifest([template]);
+assert.equal(manifest.templates.length, 1);
+assert.equal(manifest.version, 1);
+
+const cliOutPath = path.join(__dirname, "tmp", "composer-template.json");
+execFileSync(process.execPath, [path.join(__dirname, "..", "bin", "wp-composer-template.js"), "--config", path.join(__dirname, "template-cli.fixture.js"), "--out", cliOutPath], { stdio: "pipe" });
+const cliJson = JSON.parse(fs.readFileSync(cliOutPath, "utf8"));
+assert.equal(cliJson.templates[0].id, "pageTemplate");
+assert.equal(cliJson.templates[0].sections[0].fields[0].source, "header");
+assert.ok(toBasicAuthHeader({ username: "user", appPassword: "app-pass" }).startsWith("Basic "));
+
+const run = async () => {
+  const requests = [];
+  const server = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => {
+      requests.push({
+        url: req.url,
+        auth: req.headers.authorization,
+        body: JSON.parse(body),
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, importedTemplates: 1 }));
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  const port = server.address().port;
+  const response = await importComposerTemplate(manifest, {
+    url: `http://127.0.0.1:${port}/wp-json/wp-composer-bridge/v1/templates/import`,
+    username: "user",
+    appPassword: "app-pass",
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(requests[0].url, "/wp-json/wp-composer-bridge/v1/templates/import");
+  assert.ok(requests[0].auth.startsWith("Basic "));
+  assert.equal(requests[0].body.templates[0].id, "pageTemplate");
+
+  await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  console.log("converter test passed");
+};
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

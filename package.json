@@ -1,8 +1,11 @@
 {
   "name": "gatsby-plugin-wp-composer-converter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Gatsby plugin for consuming normalized WordPress composer entries and mapping them to Gatsby page data.",
   "main": "src/index.js",
+  "bin": {
+    "wp-composer-template": "bin/wp-composer-template.js"
+  },
   "keywords": [
     "gatsby",
     "gatsby-plugin",
@@ -22,6 +25,7 @@
   },
   "homepage": "https://github.com/arcsine0/wp-composer-to-gatsby#readme",
   "files": [
+    "bin",
     "gatsby-node.js",
     "src",
     "README.md"

@@ -53,6 +53,7 @@ const createDefinitionsFromSections = (sections = []) =>
     return createSection({
       id,
       type: section.type || id,
+      layout: section.layout || id,
       layoutName: section.layoutName || section.layout || toPascalCase(sectionName),
       label: section.label || sectionName,
       component: section.component,

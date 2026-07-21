@@ -191,15 +191,159 @@ Example section:
 }
 ```
 
+## Composer templates
+
+A composer template is a reusable expected page shape: a named group of sections that a page type can use.
+
+Use it when you want to describe:
+- what sections a page type supports
+- what fields each section expects
+- what JSON structure WordPress plugin should read
+
+### Create template in code
+
+```js
+const {
+  createComposerTemplate,
+  FIELD_TYPES,
+} = require(`gatsby-plugin-wp-composer-converter`);
+
+const pageTemplate = createComposerTemplate({
+  id: `pageTemplate`,
+  label: `Page Template`,
+  postType: `page`,
+  graphQLType: `Page`,
+  composerField: `pageComposer`,
+  sections: [
+    {
+      component: function HeroSection() {},
+      layout: `hero`,
+      props: {
+        title: `header`,
+        content: { source: `content`, type: FIELD_TYPES.wysiwyg },
+      },
+    },
+    {
+      component: function FaqSection() {},
+      layout: `faq`,
+      props: {
+        title: `header`,
+        items: { source: `items`, type: FIELD_TYPES.repeater },
+      },
+    },
+  ],
+});
+```
+
+### Output template JSON with npx
+
+Add config file:
+
+```js
+// composer-template.config.js
+const {
+  createComposerTemplate,
+  FIELD_TYPES,
+} = require(`gatsby-plugin-wp-composer-converter`);
+
+module.exports = createComposerTemplate({
+  id: `pageTemplate`,
+  label: `Page Template`,
+  postType: `page`,
+  graphQLType: `Page`,
+  composerField: `pageComposer`,
+  sections: [
+    {
+      component: function HeroSection() {},
+      layout: `hero`,
+      props: {
+        title: `header`,
+        content: { source: `content`, type: FIELD_TYPES.wysiwyg },
+      },
+    },
+  ],
+});
+```
+
+Run:
+
+```bash
+npx wp-composer-template --config composer-template.config.js --out composer-template.json
+```
+
+Without `--out`, command prints JSON to stdout.
+
+### Push template directly to WordPress
+
+If `wp-composer-bridge` exposes REST import:
+
+```bash
+npx wp-composer-template \
+  --config composer-template.config.js \
+  --push-url https://example.com/wp-json/wp-composer-bridge/v1/templates/import \
+  --username your-wp-username \
+  --app-password your-application-password
+```
+
+This matches WordPress-side REST import contract:
+
+```bash
+curl --user "username:application-password" \
+  -H "Content-Type: application/json" \
+  --data @composer-template.json \
+  https://example.com/wp-json/wp-composer-bridge/v1/templates/import
+```
+
+You can also write file and push in same command by combining `--out` and `--push-url`.
+
+### Template JSON shape
+
+```json
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "pageTemplate",
+      "key": "pageTemplate",
+      "label": "Page Template",
+      "postType": "page",
+      "graphQLType": "Page",
+      "target": {
+        "key": "pageTemplate",
+        "composerField": "pageComposer"
+      },
+      "sections": [
+        {
+          "id": "heroSection",
+          "layout": "hero",
+          "type": "heroSection",
+          "label": "HeroSection",
+          "fields": [
+            {
+              "name": "title",
+              "source": "header",
+              "type": "text"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## Main helpers
 
 ```js
 const {
   createComposerPageData,
+  createComposerTemplate,
+  createComposerTemplateManifest,
   createMappedComposerSections,
   getComposerEntriesFromGraphql,
   getComposerEntryByUri,
   groupComposerEntriesByPostType,
+  importComposerTemplate,
   mapSectionsToComponents,
 } = require(`gatsby-plugin-wp-composer-converter`);
 ```
@@ -231,6 +375,18 @@ Each returned section looks like:
 ### `createMappedComposerSections(entry, { components })`
 
 Returns only mapped sections.
+
+### `importComposerTemplate(manifest, options)`
+
+Posts manifest to WordPress REST import endpoint.
+
+```js
+await importComposerTemplate(manifest, {
+  url: `https://example.com/wp-json/wp-composer-bridge/v1/templates/import`,
+  username: process.env.WP_USER,
+  appPassword: process.env.WP_APP_PASSWORD,
+});
+```
 
 ### `getComposerEntriesFromGraphql(data, options)`
 
