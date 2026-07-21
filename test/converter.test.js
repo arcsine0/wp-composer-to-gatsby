@@ -6,39 +6,57 @@ const {
   createPageConfig,
   createSectionsPreset,
   FIELD_TYPES,
+  getComposerEntriesFromGraphql,
   getComposerEntryByUri,
   groupComposerEntriesByPostType,
   mapSectionsToComponents,
 } = require("../src");
-const { sectionDefinitions } = require("../src/presets/sections");
+
+const genericPreset = createSectionsPreset({
+  id: "page-sections",
+  targetType: "WpPage",
+  composerPath: "pageComposer.composer",
+  sections: [
+    {
+      component: function HeroSection() {},
+      layout: "WpPageComposerComposerHeroLayout",
+      props: {
+        title: "header",
+        desc: { source: "content", type: FIELD_TYPES.wysiwyg },
+      },
+    },
+    {
+      component: function FeatureListSection() {},
+      layout: "WpPageComposerComposerFeatureListLayout",
+      props: {
+        title: "header",
+        items: { source: "items", type: FIELD_TYPES.repeater },
+      },
+    },
+  ],
+});
 
 const composer = [
   {
-    __typename: "WpServicesComposerComposerHeroLayout",
-    header: "SEO Services",
-    subHeader: "Grow faster",
-    description: "Rank better",
-    image: { node: { sourceUrl: "https://example.com/hero.jpg" } },
-    ctas: [{ text: "Talk to us", link: "/contact/" }],
+    __typename: "WpPageComposerComposerHeroLayout",
+    header: "Welcome",
+    content: "Hello world",
   },
   {
-    __typename: "WpServicesComposerComposerMediaWithTextLayout",
-    header: "Why SEO fails",
-    content: "Bad fit",
-    mediaPlacement: "left",
-    media: { node: { sourceUrl: "https://example.com/fails.jpg" } },
-    ctas: [{ text: "Fix it", link: "/fix/" }],
+    __typename: "WpPageComposerComposerFeatureListLayout",
+    header: "Features",
+    items: [{ text: "Fast" }],
   },
 ];
 
-const config = createPageConfig(sectionDefinitions, composer);
+const config = createPageConfig(genericPreset.definitions, composer);
 
 assert.equal(config.sections.length, 2);
-assert.equal(config.sections[0].type, "seoRedesignedHero");
-assert.equal(config.sections[0].props.title, "SEO Services");
-assert.equal(config.sections[0].props.image, "https://example.com/hero.jpg");
-assert.equal(config.sections[1].type, "seoRedesignedFails");
-assert.equal(config.sections[1].props.image, "https://example.com/fails.jpg");
+assert.equal(config.sections[0].type, "heroSection");
+assert.equal(config.sections[0].props.title, "Welcome");
+assert.equal(config.sections[0].props.desc, "Hello world");
+assert.equal(config.sections[1].type, "featureListSection");
+assert.equal(config.sections[1].props.title, "Features");
 
 const generatedPreset = createSectionsPreset({
   id: "page-sections",
@@ -136,6 +154,36 @@ const mapped = mapSectionsToComponents(rootEntries[0].composerSections, {
 });
 assert.equal(mapped.length, 1);
 assert.equal(mapped[0].component, "HeroComponent");
+
+const nestedEntries = getComposerEntriesFromGraphql(
+  {
+    allWp: {
+      nodes: [
+        {
+          composerEntries: [
+            {
+              databaseId: 10,
+              postType: "page",
+              graphQLType: "Page",
+              slug: "about",
+              title: "About",
+              uri: "/about/",
+              composerSections: [
+                {
+                  layout: "heroBanner",
+                  wpFields: { header: "About us" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  { sourceQuery: "allWp" }
+);
+assert.equal(nestedEntries.length, 1);
+assert.equal(nestedEntries[0].composerSections[0].fields.header, "About us");
 
 const pageData = createComposerPageData(rootEntries[0], {
   components: {

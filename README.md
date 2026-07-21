@@ -1,12 +1,8 @@
 # gatsby-plugin-wp-composer-converter
 
-Consumes normalized composer data from `wp-composer-bridge` and makes it easier to use in Gatsby.
+Consumes normalized composer data from `wp-composer-bridge` in Gatsby.
 
-Supports two paths:
-- `root` mode: centralized `composerEntries`
-- `node` mode: existing per-node `composerSections`
-
-Legacy definitions/presets still work.
+Generic package. No page-type presets bundled.
 
 ## Install
 
@@ -14,29 +10,12 @@ Legacy definitions/presets still work.
 npm install gatsby-plugin-wp-composer-converter
 ```
 
-## What changed
+## Minimal setup
 
-Old setup assumed Gatsby had to understand raw ACF composer layouts.
-
-New setup assumes WordPress plugin already exposes normalized fields:
-- `composerSections`
-- `composerTarget`
-- `composerContract`
-- root `composerEntries`
-
-So Gatsby side mostly just registers components by normalized layout key.
-
-## Root mode
-
-Recommended.
+### 1. Add plugin
 
 ```js
-const {
-  HeroBannerSection,
-  FaqSection,
-  CtaBannerSection,
-} = require(`./src/components/sections`);
-
+// gatsby-config.js
 module.exports = {
   plugins: [
     `gatsby-source-wordpress`,
@@ -44,200 +23,30 @@ module.exports = {
       resolve: `gatsby-plugin-wp-composer-converter`,
       options: {
         mode: `root`,
-        components: {
-          heroBanner: HeroBannerSection,
-          faq: FaqSection,
-          ctaBanner: CtaBannerSection,
-        },
       },
     },
   ],
 };
 ```
 
-Defaults in root mode:
-- `sourceQuery: composerEntries`
-- `composerField: composerSections`
+### 2. Query composer entries in `gatsby-node.js`
 
-### Gatsby query in root mode
-
-Plugin creates local Gatsby nodes of type `WpComposerEntry` and adds root field `composerEntries`.
-
-```graphql
-query ComposerEntriesPage {
-  composerEntries(postTypes: ["page", "case_study"]) {
-    databaseId
-    postType
-    graphQLType
-    slug
-    title
-    uri
-    composerTarget
-    composerContract
-    composerSections
-  }
-}
-```
-
-Also available through Gatsby node queries:
-
-```graphql
-query ComposerEntriesNodes {
-  allWpComposerEntry {
-    nodes {
-      databaseId
-      postType
-      uri
-      composerSections
-    }
-  }
-}
-```
-
-### `composerEntries`
-
-`composerEntries` is centralized list of normalized composer-backed entries.
-
-Each entry preserves:
-- `databaseId`
-- `postType`
-- `graphQLType`
-- `slug`
-- `title`
-- `uri`
-- `composerTarget`
-- `composerContract`
-- `composerSections`
-
-Each section is expected to already look like:
-
-```json
-{
-  "layout": "heroBanner",
-  "id": "hero",
-  "order": 0,
-  "fields": {
-    "header": "SEO Services"
-  },
-  "meta": {
-    "rawLayoutName": "hero_banner",
-    "targetKey": "page",
-    "index": 0
-  }
-}
-```
-
-Component matching should use only:
-- `composerSections[].layout`
-
-Never raw ACF typename strings.
-
-## Root mode filtering
-
-Filter by WP post type slug:
-
-```js
-module.exports = {
-  plugins: [
-    {
-      resolve: `gatsby-plugin-wp-composer-converter`,
-      options: {
-        mode: `root`,
-        postTypes: [`page`, `case_study`],
-        components: {
-          heroBanner: HeroBannerSection,
-          faq: FaqSection,
-        },
-      },
-    },
-  ],
-};
-```
-
-This filters generated `WpComposerEntry` nodes and root `composerEntries` results.
-
-## Node mode
-
-Backwards-compatible path when app still queries WP nodes directly.
-
-```js
-module.exports = {
-  plugins: [
-    `gatsby-source-wordpress`,
-    {
-      resolve: `gatsby-plugin-wp-composer-converter`,
-      options: {
-        mode: `node`,
-        targetType: `WpPage`,
-        composerField: `composerSections`,
-        components: {
-          heroBanner: HeroBannerSection,
-        },
-      },
-    },
-  ],
-};
-```
-
-Then query node field already exposed by WordPress plugin:
-
-```graphql
-query PageBySlug($id: String!) {
-  wpPage(id: { eq: $id }) {
-    title
-    composerSections
-    composerTarget
-    composerContract
-  }
-}
-```
-
-## Migration: node mode to root mode
-
-Before:
-- query composer data per WP node type
-- keep page/post/CPT plumbing separate
-
-After:
-- query one centralized composer list
-- filter by `postTypes` when needed
-- use `layout` key to pick components
-
-Typical move:
-
-```js
-// before
-options: {
-  targetType: `WpPage`,
-  composerField: `composerSections`,
-}
-
-// after
-options: {
-  mode: `root`,
-  postTypes: [`page`],
-}
-```
-
-## Gatsby `createPages` helper
-
-If you want mapping in project `gatsby-node.js` instead of plugin config, use exported helper.
+If WP plugin exposes root `composerEntries` directly:
 
 ```js
 const path = require(`path`);
-const { createComposerPageData } = require(`gatsby-plugin-wp-composer-converter`);
 const {
-  HeroBannerSection,
-  FaqSection,
-} = require(`./src/components/sections`);
+  createComposerPageData,
+  getComposerEntriesFromGraphql,
+} = require(`gatsby-plugin-wp-composer-converter`);
+const { HeroSection, FaqSection } = require(`./src/components/sections`);
 
 const components = {
-  heroBanner: HeroBannerSection,
+  hero: HeroSection,
   faq: FaqSection,
 };
 
 exports.createPages = async ({ graphql, actions, reporter }) => {
-  const { createPage } = actions;
   const result = await graphql(`
     {
       composerEntries(postTypes: ["page"]) {
@@ -248,44 +57,170 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
         graphQLType
         composerTarget
         composerContract
-        composerSections
+        composerSections {
+          id
+          layout
+          order
+          meta
+          wpFields
+        }
       }
     }
   `);
 
-  result.data.composerEntries.forEach((entry) => {
+  const entries = getComposerEntriesFromGraphql(result.data);
+
+  entries.forEach((entry) => {
     const composer = createComposerPageData(entry, {
       components,
       warn: reporter.warn,
     });
 
-    createPage({
+    actions.createPage({
       path: entry.uri,
       component: path.resolve(`./src/templates/composer-page.js`),
-      context: {
-        databaseId: entry.databaseId,
-        composer,
-      },
+      context: { composer },
     });
   });
 };
 ```
 
-Returned `composer` object includes:
+If project nests entries under another query key, point helper at that key.
+
+Example for `allWp.nodes[].composerEntries`:
+
+```js
+const entries = getComposerEntriesFromGraphql(result.data, {
+  sourceQuery: `allWp`,
+  postTypes: [`page`, `post`],
+});
+```
+
+### 3. Render in template
+
+```js
+import React from "react";
+import { HeroSection, FaqSection } from "../components/sections";
+
+const components = {
+  hero: HeroSection,
+  faq: FaqSection,
+};
+
+export default function ComposerPageTemplate({ pageContext }) {
+  const sections = pageContext?.composer?.sections || [];
+
+  return sections.map((section) => {
+    const Component = components[section.componentKey];
+    if (!Component) return null;
+
+    return <Component key={section.id} {...section.props} />;
+  });
+}
+```
+
+## Query shapes supported
+
+### Direct root field
+
+```graphql
+{
+  composerEntries {
+    uri
+    composerSections {
+      layout
+      wpFields
+    }
+  }
+}
+```
+
+### Nested under another field
+
+```graphql
+{
+  allWp {
+    nodes {
+      composerEntries {
+        uri
+        composerSections {
+          layout
+          wpFields
+        }
+      }
+    }
+  }
+}
+```
+
+Set:
+- direct root field: no extra option needed
+- nested field: `sourceQuery: "allWp"`
+
+## What plugin expects from WP data
+
+Each entry should include:
+- `databaseId`
+- `postType`
+- `graphQLType`
+- `slug`
+- `title`
+- `uri`
+- `composerTarget`
+- `composerContract`
+- `composerSections`
+
+Each section should include:
+- `layout`
+- `id` optional
+- `order` optional
+- `meta` optional
+- `wpFields` or `fields`
+
+Example section:
+
+```json
+{
+  "layout": "hero",
+  "id": "hero",
+  "order": 0,
+  "wpFields": {
+    "title": "Welcome",
+    "content": "<p>Hello</p>"
+  }
+}
+```
+
+## Main helpers
+
+```js
+const {
+  createComposerPageData,
+  createMappedComposerSections,
+  getComposerEntriesFromGraphql,
+  getComposerEntryByUri,
+  groupComposerEntriesByPostType,
+  mapSectionsToComponents,
+} = require(`gatsby-plugin-wp-composer-converter`);
+```
+
+### `createComposerPageData(entry, { components })`
+
+Returns page-safe data for `createPage` context:
 - entry metadata
 - `sections`
 - `missingLayouts`
 - `registeredLayouts`
 
-Each generated section looks like:
+Each returned section looks like:
 
 ```js
 {
   id: `hero-0`,
   order: 0,
-  layout: `heroBanner`,
-  type: `heroBanner`,
-  componentKey: `heroBanner`,
+  layout: `hero`,
+  type: `hero`,
+  componentKey: `hero`,
   props: { ...fields },
   fields: { ...fields },
   meta: { ... },
@@ -293,59 +228,77 @@ Each generated section looks like:
 }
 ```
 
-Functions are not serialized into page context. `componentKey` is. Template can render with local component map.
+### `createMappedComposerSections(entry, { components })`
 
-## Helpers
+Returns only mapped sections.
 
-Package exports small helpers for root-mode consumers.
+### `getComposerEntriesFromGraphql(data, options)`
+
+Extracts and normalizes entries from GraphQL result.
+
+Options:
+- `sourceQuery`: where to find entries in result, default `composerEntries`
+- `postTypes`: optional post type filter
+- `composerField`: section field name, default `composerSections`
+
+## Optional root mode
+
+When plugin runs with:
+
+```js
+options: {
+  mode: `root`,
+}
+```
+
+it also creates local Gatsby nodes:
+- `WpComposerEntry`
+
+and root field:
+- `composerEntries`
+
+Useful if you want unified Gatsby-side access to normalized entries.
+
+## Legacy definition mode
+
+If project still needs Gatsby-side mapping from raw composer data, package also exposes low-level helpers:
 
 ```js
 const {
-  collectComposerEntries,
-  createComposerPageData,
-  createMappedComposerSections,
-  getComposerEntryByUri,
-  groupComposerEntriesByPostType,
-  mapSectionsToComponents,
+  createField,
+  createPageConfig,
+  createSection,
+  createSectionsPreset,
+  FIELD_TYPES,
 } = require(`gatsby-plugin-wp-composer-converter`);
 ```
 
-### `mapSectionsToComponents`
+Example:
 
 ```js
-const renderable = mapSectionsToComponents(entry.composerSections, {
-  heroBanner: HeroBannerSection,
-  faq: FaqSection,
+const preset = createSectionsPreset({
+  id: `page-sections`,
+  targetType: `WpPage`,
+  composerPath: `pageComposer.composer`,
+  sections: [
+    {
+      component: function HeroSection() {},
+      layout: `WpPageComposerComposerHeroLayout`,
+      props: {
+        title: `header`,
+        content: { source: `content`, type: FIELD_TYPES.wysiwyg },
+      },
+    },
+  ],
 });
 ```
 
-### `createMappedComposerSections`
-
-```js
-const sections = createMappedComposerSections(entry, {
-  components: {
-    heroBanner: HeroBannerSection,
-    faq: FaqSection,
-  },
-});
-```
-
-Missing layouts are skipped by default.
-
-## Legacy preset / definition mode
-
-Still supported when Gatsby must derive sections itself from raw composer data.
-
-```js
-const { createSectionsPreset, FIELD_TYPES } = require(`gatsby-plugin-wp-composer-converter`);
-```
-
-Use this only when not fully on `wp-composer-bridge` contract yet.
+Use legacy mode only when WP bridge contract is not available yet.
 
 ## Notes
 
-- root mode creates local Gatsby nodes: `WpComposerEntry`
-- root field added by plugin: `composerEntries`
-- plugin does not bundle renderer
-- plugin does not depend on raw ACF union layout fragments anymore in root mode
-- legacy preset/definition mode remains available for odd migrations
+- package is generic
+- no bundled components
+- no bundled page-type presets
+- no raw ACF union fragments needed in root flow
+- missing component layouts are skipped by default

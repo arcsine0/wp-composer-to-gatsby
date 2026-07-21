@@ -68,8 +68,8 @@ const createDefinitionsFromSections = (sections = []) =>
 
 const createSectionsPreset = (options = {}) => ({
   id: options.id || "sections",
-  targetType: options.targetType || "WpService",
-  composerPath: options.composerPath || "servicesComposer.composer",
+  targetType: options.targetType,
+  composerPath: options.composerPath,
   definitions: Array.isArray(options.definitions)
     ? options.definitions.map(createSection)
     : createDefinitionsFromSections(options.sections),

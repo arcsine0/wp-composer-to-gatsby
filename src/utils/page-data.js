@@ -1,4 +1,4 @@
-const { mapSectionsToComponents } = require("./entries");
+const { getSectionFields } = require("./entries");
 
 const createComposerPageData = (entry = {}, options = {}) => {
   const components = options.components || {};
@@ -28,8 +28,8 @@ const createComposerPageData = (entry = {}, options = {}) => {
       layout: section.layout,
       type: section.layout,
       componentKey: section.layout,
-      props: section.fields || {},
-      fields: section.fields || {},
+      props: getSectionFields(section),
+      fields: getSectionFields(section),
       meta: section.meta || null,
       hasComponent: componentExists,
     });

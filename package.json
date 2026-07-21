@@ -1,16 +1,26 @@
 {
   "name": "gatsby-plugin-wp-composer-converter",
-  "version": "0.1.0",
-  "description": "Gatsby plugin that normalizes WordPress ACF composer layouts into predictable section data.",
+  "version": "1.0.0",
+  "description": "Gatsby plugin for consuming normalized WordPress composer entries and mapping them to Gatsby page data.",
   "main": "src/index.js",
   "keywords": [
     "gatsby",
     "gatsby-plugin",
     "wordpress",
+    "wpgraphql",
     "acf",
     "composer"
   ],
+  "author": "Jans",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arcsine0/wp-composer-to-gatsby.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arcsine0/wp-composer-to-gatsby/issues"
+  },
+  "homepage": "https://github.com/arcsine0/wp-composer-to-gatsby#readme",
   "files": [
     "gatsby-node.js",
     "src",

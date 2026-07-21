@@ -1,9 +1,9 @@
 const converter = require("./converter/sectionConverter");
-const { sectionDefinitions, sectionsPreset } = require("./presets/sections");
 const { createDefinitionsFromSections, createSectionsPreset } = require("./presets/createSectionsPreset");
 const {
   collectComposerEntries,
   filterComposerEntries,
+  getComposerEntriesFromGraphql,
   getComposerEntryByUri,
   groupComposerEntriesByPostType,
   mapSectionsToComponents,
@@ -23,11 +23,10 @@ module.exports = {
   createMappedComposerSections,
   createSectionsPreset,
   filterComposerEntries,
+  getComposerEntriesFromGraphql,
   getComposerEntryByUri,
   groupComposerEntriesByPostType,
   mapSectionsToComponents,
   normalizeComposerEntry,
   normalizeSection,
-  sectionDefinitions,
-  sectionsPreset,
 };

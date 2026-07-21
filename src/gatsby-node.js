@@ -1,20 +1,14 @@
 const { createPageConfig } = require("./converter/sectionConverter");
-const { sectionsPreset } = require("./presets/sections");
 const { createSectionsPreset } = require("./presets/createSectionsPreset");
 const { collectComposerEntries, filterComposerEntries } = require("./utils/entries");
 const { getComposerField, getMode, isLegacyDefinitionsMode } = require("./utils/options");
 const { get } = require("./utils/path");
 
-const builtInPresets = {
-  [sectionsPreset.id]: sectionsPreset,
-  sections: sectionsPreset,
-};
-
 const normalizePreset = (entry) => {
   if (!entry) return null;
 
   if (typeof entry === "string") {
-    return builtInPresets[entry] || null;
+    return null;
   }
 
   if (entry.preset) {
@@ -40,9 +34,7 @@ const normalizeTargets = (pluginOptions = {}) => {
     .filter(Boolean)
     .filter((entry) => entry.targetType && entry.composerPath && Array.isArray(entry.definitions));
 
-  if (merged.length > 0) return merged;
-
-  return [sectionsPreset];
+  return merged;
 };
 
 const createSchemaCustomization = ({ actions }) => {

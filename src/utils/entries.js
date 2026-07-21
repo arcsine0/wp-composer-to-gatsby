@@ -1,4 +1,5 @@
 const { getComposerField, getPostTypes } = require("./options");
+const { get } = require("./path");
 
 const toPostTypeSlug = (value = "") =>
   String(value || "")
@@ -7,11 +8,14 @@ const toPostTypeSlug = (value = "") =>
     .replace(/__/g, "_")
     .toLowerCase();
 
+const getSectionFields = (section = {}) =>
+  section.fields || section.wpFields || section.props || {};
+
 const normalizeSection = (section = {}, index = 0) => ({
   layout: section.layout || section.type || section.id || `section${index + 1}`,
   id: section.id || null,
   order: typeof section.order === "number" ? section.order : index,
-  fields: section.fields || section.props || {},
+  fields: getSectionFields(section),
   meta: section.meta || null,
 });
 
@@ -69,6 +73,46 @@ const groupComposerEntriesByPostType = (entries = []) =>
 const getComposerEntryByUri = (entries = [], uri = "") =>
   (entries || []).find((entry) => entry.uri === uri) || null;
 
+const flattenComposerEntries = (value) => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => flattenComposerEntries(item));
+  }
+
+  if (!value || typeof value !== "object") return [];
+
+  if (Array.isArray(value.composerEntries)) {
+    return value.composerEntries.flatMap((entry) => flattenComposerEntries(entry));
+  }
+
+  if (Array.isArray(value.nodes)) {
+    return value.nodes.flatMap((node) => flattenComposerEntries(node));
+  }
+
+  if (Array.isArray(value.edges)) {
+    return value.edges.flatMap((edge) => flattenComposerEntries(edge && edge.node));
+  }
+
+  if (Array.isArray(value.composerSections) || Array.isArray(value[getComposerField({})])) {
+    return [value];
+  }
+
+  return [];
+};
+
+const getComposerEntriesFromGraphql = (data = {}, options = {}) => {
+  const sourceQuery = String(options.sourceQuery || "composerEntries");
+  const source = get(data, sourceQuery);
+
+  if (sourceQuery === "composerEntries" && Array.isArray(source)) {
+    return filterComposerEntries(source.map((entry) => normalizeComposerEntry(entry, options)).filter(Boolean), options);
+  }
+
+  return filterComposerEntries(
+    flattenComposerEntries(source).map((entry) => normalizeComposerEntry(entry, options)).filter(Boolean),
+    options
+  );
+};
+
 const mapSectionsToComponents = (sections = [], components = {}, options = {}) => {
   const warn = typeof options.warn === "function" ? options.warn : null;
 
@@ -93,7 +137,9 @@ const mapSectionsToComponents = (sections = [], components = {}, options = {}) =
 module.exports = {
   collectComposerEntries,
   filterComposerEntries,
+  getComposerEntriesFromGraphql,
   getComposerEntryByUri,
+  getSectionFields,
   groupComposerEntriesByPostType,
   mapSectionsToComponents,
   normalizeComposerEntry,
